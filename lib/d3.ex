@@ -3,10 +3,8 @@ defmodule D3 do
   def part1(file) do
     gamma =
       file
-      |> File.stream!(trim: true, line_or_bytes: :line)
-      |> Stream.map(&String.trim/1)
-      |> Stream.map(&String.to_charlist/1)
-      |> Stream.map(
+      |> split_into_rows()
+      |> Enum.map(
         &Enum.with_index(&1, fn char, index ->
           {index, [char]}
         end)
@@ -34,6 +32,14 @@ defmodule D3 do
     Tuple.product({gamma_rate, epsilon_rate})
   end
 
+  def split_into_rows(file) do
+    file
+    |> File.stream!(trim: true, line_or_bytes: :line)
+    |> Stream.map(&String.trim/1)
+    |> Stream.map(&String.to_charlist/1)
+    |> Enum.take_every(1)
+  end
+
   defp binary_to_number(binary_with_count) do
     binary_with_count
     |> Enum.map(fn {binary, _} -> binary end)
@@ -41,4 +47,66 @@ defmodule D3 do
     |> Integer.parse(2)
     |> elem(0)
   end
+
+  def part2(file) do
+    rows = split_into_rows(file)
+
+    oxygen =
+      rows
+      |> oxygen_generator_rating(0)
+      |> to_string()
+      |> Integer.parse(2)
+      |> elem(0)
+
+    co2 =
+      rows
+      |> co2_scrubber_rating(0)
+      |> to_string()
+      |> Integer.parse(2)
+      |> elem(0)
+
+    Tuple.product({oxygen, co2})
+  end
+
+  def oxygen_generator_rating([first_list | _] = list_of_chars, index)
+      when length(first_list) > index do
+    frequencies =
+      list_of_chars
+      |> Enum.map(&Enum.at(&1, index))
+      |> Enum.frequencies()
+
+    {most_frequent_char, _occurences} =
+      Enum.max_by(frequencies, fn {char, occ} ->
+        occ * 100 + char
+      end)
+
+    list_of_chars
+    |> Enum.filter(fn list_of_chars ->
+      Enum.at(list_of_chars, index) == most_frequent_char
+    end)
+    |> oxygen_generator_rating(index + 1)
+  end
+
+  def oxygen_generator_rating([rating | _], _index), do: rating
+
+  def co2_scrubber_rating([first_list | _] = list_of_chars, index)
+      when length(first_list) > index do
+    frequencies =
+      list_of_chars
+      |> Enum.map(&Enum.at(&1, index))
+      |> Enum.frequencies()
+
+    {less_frequent_char, _occurences} =
+      Enum.min_by(frequencies, fn {_char, occ} ->
+        occ
+      end)
+
+    list_of_chars
+    |> Enum.filter(fn list_of_chars ->
+      Enum.at(list_of_chars, index) == less_frequent_char
+    end)
+    |> co2_scrubber_rating(index + 1)
+  end
+
+  def co2_scrubber_rating([rating | _], _index), do: rating
 end
